@@ -1,11 +1,15 @@
 from DatabaseConnector import DatabaseConnector
 import pandas as pd
+
 def insert_in_table(table_name, df, connector):
+    # Function to insert data from a DataFrame into a database table
+
+    # Fill NaN values with 0 for columns of type float
     for col in df.columns:
         if df[col].dtypes == 'float':
             df[col] = df[col].fillna(0)
 
-    # Define batch size
+    # Define batch size for batch insertion
     batch_size = 1000  # Adjust this value based on your dataset size and system resources
 
     # Initialize an empty list to store rows for batch insertion
@@ -13,7 +17,7 @@ def insert_in_table(table_name, df, connector):
 
     # Iterate over DataFrame rows
     for row in df.itertuples():
-        # Append row to the list
+        # Append row values to the list
         rows_to_insert.append((
             row.vendorid,
             row.trip_distance,

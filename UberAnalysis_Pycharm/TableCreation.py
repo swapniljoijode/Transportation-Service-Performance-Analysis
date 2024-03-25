@@ -1,8 +1,10 @@
 from DatabaseConnector import DatabaseConnector
 import pandas as pd
 
-def create_table(car_type,df, year, month, connector):
-    # Specify the table name
+def create_table(car_type, df, year, month, connector):
+    # Function to create a table in the database for storing trip data of a specific car type for a given year and month
+
+    # Specify the table name based on car type, year, and month
     table_name = f'{car_type}_trips_{year}_{month}'
 
     # Construct the create table query
@@ -30,7 +32,7 @@ def create_table(car_type,df, year, month, connector):
     )
     """
 
-    # Create the table
+    # Create the table in the database using the connector
     connector.create_table(table_name, create_table_query)
 
     return table_name
