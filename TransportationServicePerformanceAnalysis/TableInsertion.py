@@ -36,7 +36,8 @@ def insert_in_table(table_name, df, connector):
             row.tolls_amount,
             row.total_amount,
             row.congestion_surcharge,
-            row.airport_fee
+            row.airport_fee,
+            row.car_type
         ))
 
         # Check if batch size is reached
@@ -44,8 +45,8 @@ def insert_in_table(table_name, df, connector):
             # Bulk insert the batch into the database
             connector.insert_data(table_name, f'''
                 INSERT INTO {table_name}
-                (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', rows_to_insert)
             connector.commit()
 
@@ -56,7 +57,7 @@ def insert_in_table(table_name, df, connector):
     if rows_to_insert:
         connector.insert_data(table_name, f'''
             INSERT INTO {table_name}
-            (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', rows_to_insert)
         connector.commit()

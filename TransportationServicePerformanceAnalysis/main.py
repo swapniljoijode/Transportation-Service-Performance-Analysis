@@ -12,7 +12,7 @@ webpage_url = 'https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page'
 extractor = DataExtractor(webpage_url)
 
 # Extract data using DataExtractor.extract() method
-green_dataframes, yellow_dataframes = extractor.extract()
+green_dataframes, yellow_dataframes, required_year = extractor.extract()
 
 '''Connecting to the server'''
 # Requesting user for Connection details for MS SQL Server
@@ -38,76 +38,80 @@ mssql_connector = DatabaseConnector(db_type=db_type, **server_details)
 # Connect to the database
 mssql_connector.connect()
 
-print('Please provide the details of the data required\n')
-'''Ask the user for the year and month of the required data'''
-required_year = int(input('Enter the year of the required data: '))
-
+monthly_combined_data = pd.DataFrame()
+month_list = [df['pickup_datetime'].dt.month.iloc[0] for df in yellow_dataframes]
 # Process the extracted data and insert into the database
-for df in yellow_dataframes:
-    car_type = 'yellow_cars'
-    df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
+for month in month_list:
+    for df in yellow_dataframes:
+        df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
+        df['car_type'] = 1
+        # Extract month and year
+        pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
+        pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
 
-    # Extract month and year
-    pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
-    pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
 
-    required_data = pd.DataFrame()
-    if pickup_year == required_year:
-        df_year = df[(df['pickup_datetime'].dt.year == pickup_year)] #filter the dates by year
-        df_year_month = df_year[(df_year['pickup_datetime'].dt.month == pickup_month)] #filter the dates by month
-        grouped = df.groupby(df_year_month['pickup_datetime'].dt.date)
+        if pickup_year == required_year and pickup_month == month:
+            df_year = df[(df['pickup_datetime'].dt.year == pickup_year)] #filter the dates by year
+            df_year_month = df_year[(df_year['pickup_datetime'].dt.month == pickup_month)] #filter the dates by month
+            grouped = df.groupby(df_year_month['pickup_datetime'].dt.date)
 
-        # Initialize an empty list to store sampled dataframes
-        sampled_dfs = []
+            # Initialize an empty list to store sampled dataframes
+            sampled_dfs = []
+            yellow_monthly_combined_data = pd.DataFrame()
+            # Sample 1000 rows at random for each group
+            for _, group_df in grouped:
+                if len(group_df) >= 1000:
+                    sampled_df = group_df.sample(n=1000, random_state=42)  # Set random_state for reproducibility
+                else:
+                    sampled_df = group_df  # Keep all rows if less than 1000
+                sampled_dfs.append(sampled_df)
 
-        # Sample 1000 rows at random for each group
-        for _, group_df in grouped:
-            if len(group_df) >= 1000:
-                sampled_df = group_df.sample(n=1000, random_state=42)  # Set random_state for reproducibility
-            else:
-                sampled_df = group_df  # Keep all rows if less than 1000
-            sampled_dfs.append(sampled_df)
+            for new_df in sampled_dfs:
+                yellow_monthly_combined_data = pd.concat([yellow_monthly_combined_data, new_df], ignore_index=True)
+            monthly_combined_data = pd.concat([monthly_combined_data, yellow_monthly_combined_data], ignore_index=True)
 
-        for new_df in sampled_dfs:
-            required_data = pd.concat([required_data, new_df], ignore_index=True)
+        else:
+            continue
 
-        table_name = TableCreation.create_table(car_type, required_data, pickup_year, pickup_month, mssql_connector)
-        TableInsertion.insert_in_table(table_name, required_data, mssql_connector)
+    # Process green car data
+    for df in green_dataframes:
+        df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
+        df['dropoff_datetime'] = pd.to_datetime(df['dropoff_datetime'])
+        # add new column to the dataframe for car type. 1: yellow cars. 2: green cars
+        df['car_type'] = 2
 
-    else:
-        continue
+        # Extract month and year
+        pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
+        pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
 
-# Process green car data
-for df in green_dataframes:
-    car_type = 'green_cars'
-    df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
 
-    # Extract month and year
-    pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
-    pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
+        if pickup_year == required_year and pickup_month == month:
+            df_year = df[(df['pickup_datetime'].dt.year == pickup_year)] #filter the dates by year
+            df_year_month = df_year[(df_year['pickup_datetime'].dt.month == pickup_month)] #filter the dates by month
+            grouped = df.groupby(df_year_month['pickup_datetime'].dt.date)
 
-    required_data = pd.DataFrame()
-    if pickup_year == required_year:
-        df_year = df[(df['pickup_datetime'].dt.year == pickup_year)] #filter the dates by year
-        df_year_month = df_year[(df_year['pickup_datetime'].dt.month == pickup_month)] #filter the dates by month
-        grouped = df.groupby(df_year_month['pickup_datetime'].dt.date)
+            # Initialize an empty list to store sampled dataframes
+            sampled_dfs = []
+            green_monthly_combined_data = pd.DataFrame()
 
-        # Initialize an empty list to store sampled dataframes
-        sampled_dfs = []
+            # Sample 1000 rows at random for each group
+            for _, group_df in grouped:
+                if len(group_df) >= 1000:
+                    sampled_df = group_df.sample(n=1000, random_state=42)  # Set random_state for reproducibility
+                else:
+                    sampled_df = group_df  # Keep all rows if less than 1000
+                sampled_dfs.append(sampled_df)
 
-        # Sample 1000 rows at random for each group
-        for _, group_df in grouped:
-            if len(group_df) >= 1000:
-                sampled_df = group_df.sample(n=1000, random_state=42)  # Set random_state for reproducibility
-            else:
-                sampled_df = group_df  # Keep all rows if less than 1000
-            sampled_dfs.append(sampled_df)
+            for new_df in sampled_dfs:
+                green_monthly_combined_data = pd.concat([green_monthly_combined_data, new_df], ignore_index=True)
+            monthly_combined_data = pd.concat([monthly_combined_data, green_monthly_combined_data], ignore_index=True)
 
-        for new_df in sampled_dfs:
-            required_data = pd.concat([required_data, new_df], ignore_index=True)
 
-        table_name = TableCreation.create_table(car_type, required_data, pickup_year, pickup_month, mssql_connector)
-        TableInsertion.insert_in_table(table_name, required_data, mssql_connector)
+        else:
+            continue
 
-    else:
-        continue
+    table_name = TableCreation.create_table(monthly_combined_data,required_year,month,mssql_connector)
+    TableInsertion.insert_in_table(table_name,monthly_combined_data,mssql_connector)
+    monthly_combined_data = pd.DataFrame()
+
+mssql_connector.close()

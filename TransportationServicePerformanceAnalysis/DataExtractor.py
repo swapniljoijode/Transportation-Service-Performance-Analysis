@@ -46,14 +46,15 @@ class DataExtractor:
         # Initialize lists to store DataFrames for green and yellow taxis
         yellow_dataframes = []
         green_dataframes = []
-
+        # Ask the user to specify which year's data is required
+        required_year = int(input('Enter the year of the required data: '))
         # Iterate over the Parquet links, filter by year and taxi category, download each file, and load it into a DataFrame
         for link in parquet_links:
             parquet_url = link['href']
             # Extract the year from the URL
             year = int(parquet_url.split('_')[-1].split('-')[0])
             # Check if the Parquet file is for the year 2022 and belongs to green or yellow taxi category
-            if year == 2022 and 'green' in parquet_url:
+            if year == required_year and 'green' in parquet_url:
                 try:
                     # Download and read the Parquet file into a DataFrame for green taxis
                     file_path = self.download_parquet_file(parquet_url, output_dir)
@@ -62,7 +63,7 @@ class DataExtractor:
                 except Exception as e:
                     print(f"Error processing Parquet link: {parquet_url}. Error: {e}")
                     continue
-            if year == 2022 and 'yellow' in parquet_url:
+            if year == required_year and 'yellow' in parquet_url:
                 try:
                     # Download and read the Parquet file into a DataFrame for yellow taxis
                     file_path = self.download_parquet_file(parquet_url, output_dir)
@@ -76,13 +77,11 @@ class DataExtractor:
         columns_to_include = ['VendorID', 'Trip_distance', 'pickup_datetime', 'dropoff_datetime',
                               'PULocationID', 'DOLocationID', 'RateCodeID', 'Store_and_fwd_flag', 'passenger_count',
                               'Payment_type', 'Fare_amount', 'MTA_tax', 'Improvement_surcharge',
-                              'Tip_amount', 'Tolls_amount', 'Total_amount', 'Congestion_Surcharge',
-                              'Airport_fee']
+                              'Tip_amount', 'Tolls_amount', 'Total_amount', 'Congestion_Surcharge', 'Airport_Fee'
+                              ]
 
         # Lowercase all column names
         columns_to_include_lower = [col.lower() for col in columns_to_include]
-
-        print(columns_to_include_lower)
 
         # Process yellow taxi DataFrames
         for df in yellow_dataframes:
@@ -96,8 +95,11 @@ class DataExtractor:
             # Add airport_fee column if not present
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
-            # Filter DataFrame columns
-            df = df[columns_to_include_lower]
+            columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
+            df.drop(columns=columns_to_drop, inplace=True)
+
+
+
 
         # Process green taxi DataFrames
         for df in green_dataframes:
@@ -112,7 +114,8 @@ class DataExtractor:
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
             # Filter DataFrame columns
-            df = df[columns_to_include_lower]
+            columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
+            df.drop(columns=columns_to_drop, inplace=True)
 
         # Return processed DataFrames for green and yellow taxis
-        return green_dataframes, yellow_dataframes
+        return green_dataframes, yellow_dataframes, required_year

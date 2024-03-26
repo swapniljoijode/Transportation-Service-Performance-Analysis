@@ -1,11 +1,11 @@
 from DatabaseConnector import DatabaseConnector
 import pandas as pd
 
-def create_table(car_type, df, year, month, connector):
+def create_table(df, year, month, connector):
     # Function to create a table in the database for storing trip data of a specific car type for a given year and month
 
     # Specify the table name based on car type, year, and month
-    table_name = f'{car_type}_trips_{year}_{month}'
+    table_name = f'trips_{year}_{month}'
 
     # Construct the create table query
     create_table_query = f"""
@@ -28,7 +28,8 @@ def create_table(car_type, df, year, month, connector):
         tolls_amount FLOAT,
         total_amount FLOAT,
         congestion_surcharge FLOAT,
-        airport_fee FLOAT
+        airport_fee FLOAT,
+        car_type INT
     )
     """
 
