@@ -1,7 +1,7 @@
 from DatabaseConnector import DatabaseConnector
-import pandas as pd
 
-def create_table(df, year, month, connector):
+
+def create_table(year, month, connector):
     # Function to create a table in the database for storing trip data of a specific car type for a given year and month
 
     # Specify the table name based on car type, year, and month
@@ -11,25 +11,29 @@ def create_table(df, year, month, connector):
     create_table_query = f"""
     CREATE TABLE {table_name} (
         tripid INT IDENTITY(1,1) PRIMARY KEY,
-        vendorid NVARCHAR(MAX),
+        vendorname varchar(50),
         trip_distance FLOAT,
         pickup_datetime DATETIME,
         dropoff_datetime DATETIME,
-        pulocationid INT,
-        dolocationid INT,
+        pu_borough varchar(50),
+        pu_zone varchar(50),
+        pu_service_zone varchar(50),
+        do_borough varchar(50),
+        do_zone varchar(50),
+        do_service_zone varchar(50),
         passenger_count FLOAT,
-        ratecodeid FLOAT,
-        store_and_fwd_flag NVARCHAR(2),
-        payment_type NVARCHAR(50),
-        fare_amount FLOAT,
-        mta_tax FLOAT,
-        improvement_surcharge FLOAT,
-        tip_amount FLOAT,
-        tolls_amount FLOAT,
-        total_amount FLOAT,
-        congestion_surcharge FLOAT,
-        airport_fee FLOAT,
-        car_type INT
+        store_and_fwd_flag VARCHAR(2),
+        ratecode varchar(20),
+        payment_type VARCHAR(50),
+        fare_amount FLOAT,  -- Adjust precision to 18 total digits with 2 decimal places
+        mta_tax FLOAT,      -- Adjust precision to 18 total digits with 2 decimal places
+        improvement_surcharge FLOAT,  -- Adjust precision to 18 total digits with 2 decimal places
+        tip_amount FLOAT,   -- Adjust precision to 18 total digits with 2 decimal places
+        tolls_amount FLOAT, -- Adjust precision to 18 total digits with 2 decimal places
+        total_amount FLOAT, -- Adjust precision to 18 total digits with 2 decimal places
+        congestion_surcharge FLOAT,  -- Adjust precision to 18 total digits with 2 decimal places
+        airport_fee FLOAT,  -- Adjust precision to 18 total digits with 2 decimal places
+        car_type VARCHAR(50)
     )
     """
 

@@ -44,7 +44,8 @@ month_list = [df['pickup_datetime'].dt.month.iloc[0] for df in yellow_dataframes
 for month in month_list:
     for df in yellow_dataframes:
         df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
-        df['car_type'] = 1
+        df['car_type'] = 'yellow_cars'
+
         # Extract month and year
         pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
         pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
@@ -78,7 +79,7 @@ for month in month_list:
         df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
         df['dropoff_datetime'] = pd.to_datetime(df['dropoff_datetime'])
         # add new column to the dataframe for car type. 1: yellow cars. 2: green cars
-        df['car_type'] = 2
+        df['car_type'] = 'green_cars'
 
         # Extract month and year
         pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
@@ -110,7 +111,7 @@ for month in month_list:
         else:
             continue
 
-    table_name = TableCreation.create_table(monthly_combined_data,required_year,month,mssql_connector)
+    table_name = TableCreation.create_table(required_year,month,mssql_connector)
     TableInsertion.insert_in_table(table_name,monthly_combined_data,mssql_connector)
     monthly_combined_data = pd.DataFrame()
 

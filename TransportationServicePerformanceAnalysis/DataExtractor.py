@@ -10,7 +10,7 @@ class DataExtractor:
         # Initializes the DataExtractor class with a webpage URL
         self.webpage_url = webpage_url
 
-    def download_parquet_file(self, url, output_dir):
+    def download_files(self, url, output_dir):
         # Function to download Parquet files from URLs
         # Extract filename from URL
         filename = url.split('/')[-1]
@@ -28,6 +28,9 @@ class DataExtractor:
         # Function to read Parquet file into DataFrame
         df = pd.read_parquet(file_path)
         return df
+    def read_csv_to_df(self, file_path):
+        df = pd.read_csv(file_path)
+        return df
 
     def extract(self):
         # Function to perform data extraction
@@ -38,10 +41,21 @@ class DataExtractor:
 
         # Find all <a> tags containing links to Parquet files
         parquet_links = soup.find_all('a', href=lambda href: href.strip().endswith('.parquet'))
+        # Find all <a> tags containing links to csv files
+        csv_links = soup.find_all('a', href=lambda href: href.strip().endswith('.csv'))
         # Directory to save downloaded Parquet files
         output_dir = 'venv/downloaded_parquet_files'
+        # Directory to save downloaded csv files
+        output_dir_csv = 'venv/downloaded_csv_files'
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(output_dir_csv, exist_ok=True)
+
+        csv_df = pd.DataFrame()
+        for link in csv_links:
+            csv_url = link['href']
+            file_path = self.download_files(csv_url,output_dir_csv)
+            csv_df = self.read_csv_to_df(file_path)
 
         # Initialize lists to store DataFrames for green and yellow taxis
         yellow_dataframes = []
@@ -57,7 +71,7 @@ class DataExtractor:
             if year == required_year and 'green' in parquet_url:
                 try:
                     # Download and read the Parquet file into a DataFrame for green taxis
-                    file_path = self.download_parquet_file(parquet_url, output_dir)
+                    file_path = self.download_files(parquet_url, output_dir)
                     df = self.read_parquet_to_df(file_path)
                     green_dataframes.append(df)
                 except Exception as e:
@@ -66,25 +80,48 @@ class DataExtractor:
             if year == required_year and 'yellow' in parquet_url:
                 try:
                     # Download and read the Parquet file into a DataFrame for yellow taxis
-                    file_path = self.download_parquet_file(parquet_url, output_dir)
+                    file_path = self.download_files(parquet_url, output_dir)
                     df = self.read_parquet_to_df(file_path)
                     yellow_dataframes.append(df)
                 except Exception as e:
                     print(f"Error processing Parquet link: {parquet_url}. Error: {e}")
                     continue
 
+        vendor = {1: "Creative Mobile Technologies",
+                  2: "VeriFone Inc"}
+
+        rate_code_type = {1: "Standard rate",
+                          2: "JFK",
+                          3: "Newark",
+                          4: "Nassau",
+                          5: "Negotiated Fare",
+                          6: "Group Ride"}
+
+
+
+        payment_type = {
+            1: "Credit Card",
+            2: "Cash",
+            3: "No Charge",
+            4: "Dispute",
+            5: "Unknown",
+            6: "Voided Trip"
+        }
+
         # List of columns to include in the final DataFrame
-        columns_to_include = ['VendorID', 'Trip_distance', 'pickup_datetime', 'dropoff_datetime',
-                              'PULocationID', 'DOLocationID', 'RateCodeID', 'Store_and_fwd_flag', 'passenger_count',
+        columns_to_include = ['VendorName', 'Trip_distance', 'pickup_datetime', 'dropoff_datetime',
+                              'PUBorough','DOBorough','PUZone','DOZone','PUservicezone','DOservicezone', 'RateCode', 'Store_and_fwd_flag', 'passenger_count',
                               'Payment_type', 'Fare_amount', 'MTA_tax', 'Improvement_surcharge',
                               'Tip_amount', 'Tolls_amount', 'Total_amount', 'Congestion_Surcharge', 'Airport_Fee'
                               ]
 
         # Lowercase all column names
         columns_to_include_lower = [col.lower() for col in columns_to_include]
-
+        yellow_dataframes_transformed = []
+        green_dataframes_transformed = []
         # Process yellow taxi DataFrames
-        for df in yellow_dataframes:
+        for id, df in enumerate(yellow_dataframes):
+
             # Lowercase column names
             df.columns = df.columns.str.lower()
             # Rename datetime columns if necessary
@@ -95,14 +132,29 @@ class DataExtractor:
             # Add airport_fee column if not present
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
+            df['vendorid'] = df['vendorid'].map(vendor)
+            df['ratecodeid'] = df['ratecodeid'].map(rate_code_type)
+            df['payment_type'] = df['payment_type'].map(payment_type)
+            df = pd.merge(df,csv_df,left_on='pulocationid', right_on='LocationID', how='left')
+            df.rename(columns={'Borough': 'puborough','Zone':'puzone','service_zone':'puservicezone','vendorid':'vendorname','ratecodeid':'ratecode'}, inplace=True)
+            df.drop(columns=['LocationID'],inplace=True)
+            df = pd.merge(df, csv_df, left_on='dolocationid', right_on='LocationID', how='left')
+            df.rename(columns={'Borough': 'doborough', 'Zone': 'dozone', 'service_zone': 'doservicezone'}, inplace=True)
+            df.drop(columns=['LocationID'], inplace=True)
+            for col in df.columns:
+                if df[col].dtypes == 'float':
+                    df[col] = df[col].fillna(0)
+                    df[col] = df[col].astype('float')
             columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
             df.drop(columns=columns_to_drop, inplace=True)
+            yellow_dataframes_transformed.append(df)
 
 
 
 
         # Process green taxi DataFrames
-        for df in green_dataframes:
+        for id,df in enumerate(green_dataframes):
+
             # Lowercase column names
             df.columns = df.columns.str.lower()
             # Rename datetime columns if necessary
@@ -113,9 +165,22 @@ class DataExtractor:
             # Add airport_fee column if not present
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
-            # Filter DataFrame columns
+            df['vendorid'] = df['vendorid'].map(vendor)
+            df['ratecodeid'] = df['ratecodeid'].map(rate_code_type)
+            df['payment_type'] = df['payment_type'].map(payment_type)
+            df = pd.merge(df, csv_df, left_on='pulocationid', right_on='LocationID', how='left')
+            df.rename(columns={'Borough': 'puborough','Zone':'puzone','service_zone':'puservicezone','vendorid':'vendorname','ratecodeid':'ratecode'}, inplace=True)
+            df.drop(columns=['LocationID'], inplace=True)
+            df = pd.merge(df, csv_df, left_on='dolocationid', right_on='LocationID', how='left')
+            df.rename(columns={'Borough': 'doborough', 'Zone': 'dozone', 'service_zone': 'doservicezone'}, inplace=True)
+            df.drop(columns=['LocationID'], inplace=True)
+            for col in df.columns:
+                if df[col].dtypes == 'float':
+                    df[col] = df[col].fillna(0)
+                    df[col] = df[col].astype('float')
             columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
             df.drop(columns=columns_to_drop, inplace=True)
+            green_dataframes_transformed.append(df)
 
         # Return processed DataFrames for green and yellow taxis
-        return green_dataframes, yellow_dataframes, required_year
+        return green_dataframes_transformed, yellow_dataframes_transformed, required_year
