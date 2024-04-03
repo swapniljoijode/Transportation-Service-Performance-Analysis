@@ -29,6 +29,10 @@ class DataExtractor:
         df = pd.read_parquet(file_path)
         return df
 
+    def read_csv_to_df(self,file_path):
+        df = pd.read_csv(file_path)
+        return df
+
     def extract(self):
         # Function to perform data extraction
         # Send HTTP GET request to retrieve webpage content
@@ -38,10 +42,26 @@ class DataExtractor:
 
         # Find all <a> tags containing links to Parquet files
         parquet_links = soup.find_all('a', href=lambda href: href.strip().endswith('.parquet'))
+        # Find all <a> tags containing links to csv files
+        csv_links = soup.find_all('a', href=lambda href: href.strip().endswith('.csv'))
         # Directory to save downloaded Parquet files
         output_dir = 'venv/downloaded_parquet_files'
+        # Directory to save downloaded CSV files
+        output_dir_csv = 'venv/downloaded_csv_files'
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(output_dir_csv, exist_ok=True)
+
+        #Download the Location.csv file and load it in the Dataframe
+        Location_df = pd.DataFrame()
+        for link in csv_links:
+            csv_url = link['href']
+            file_path = self.download_parquet_file(csv_url, output_dir_csv)
+            Location_df = self.read_csv_to_df(file_path)
+            for col in Location_df.columns:
+                if not col == "LocationID":
+                    Location_df[col] = Location_df[col].fillna('Unknown')
+
 
         # Initialize lists to store DataFrames for green and yellow taxis
         yellow_dataframes = []
@@ -73,11 +93,35 @@ class DataExtractor:
                     print(f"Error processing Parquet link: {parquet_url}. Error: {e}")
                     continue
 
+
+
+        yellow_dataframes_transformed = []
+        green_dataframes_transformed = []
+
+        vendor = {1: "Creative Mobile Technologies",
+                  2: "VeriFone Inc"}
+
+        rate_code_type = {1: "Standard rate",
+                          2: "JFK",
+                          3: "Newark",
+                          4: "Nassau",
+                          5: "Negotiated Fare",
+                          6: "Group Ride"}
+
+        payment_type = {
+            1: "Credit Card",
+            2: "Cash",
+            3: "No Charge",
+            4: "Dispute",
+            5: "Unknown",
+            6: "Voided Trip"
+        }
+
         # List of columns to include in the final DataFrame
-        columns_to_include = ['VendorID', 'Trip_distance', 'pickup_datetime', 'dropoff_datetime',
-                              'PULocationID', 'DOLocationID', 'RateCodeID', 'Store_and_fwd_flag', 'passenger_count',
+        columns_to_include = ['VendorName', 'Trip_distance', 'pickup_datetime', 'dropoff_datetime',
+                              'PickupLocation','DropoffLocation', 'RateCode', 'Store_and_fwd_flag', 'passenger_count',
                               'Payment_type', 'Fare_amount', 'MTA_tax', 'Improvement_surcharge',
-                              'Tip_amount', 'Tolls_amount', 'Total_amount', 'Congestion_Surcharge', 'Airport_Fee'
+                              'Tip_amount', 'Tolls_amount', 'Total_amount', 'Congestion_Surcharge', 'Airport_Fee', 'Car_Type'
                               ]
 
         # Lowercase all column names
@@ -85,6 +129,7 @@ class DataExtractor:
 
         # Process yellow taxi DataFrames
         for df in yellow_dataframes:
+            # Lowercase column names
             # Lowercase column names
             df.columns = df.columns.str.lower()
             # Rename datetime columns if necessary
@@ -95,9 +140,34 @@ class DataExtractor:
             # Add airport_fee column if not present
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
+                df['airport_fee'].astype('float')
+            df['car_type'] = 'Yellow Cars'
+            df['vendorid'] = df['vendorid'].map(vendor)
+            df['ratecodeid'] = df['ratecodeid'].map(rate_code_type)
+            df['payment_type'] = df['payment_type'].map(payment_type)
+            df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
+            df['dropoff_datetime'] = pd.to_datetime(df['dropoff_datetime'])
+            df.rename(columns={'vendorid': 'vendorname', 'ratecodeid': 'ratecode'}, inplace=True)
+            df = pd.merge(df, Location_df, left_on='pulocationid', right_on='LocationID', how='left')
+            df['pickuplocation'] = df['Borough']+', '+df['Zone']+', '+df['service_zone']
+            df.drop(columns=['LocationID','Borough','Zone','service_zone'], inplace=True)
+            df = pd.merge(df, Location_df, left_on='dolocationid', right_on='LocationID', how='left')
+            df['dropofflocation'] = df['Borough']+', '+df['Zone']+', '+df['service_zone']
+            df.drop(columns=['LocationID', 'Borough', 'Zone', 'service_zone'], inplace=True)
+            for col in df.columns:
+                if df[col].dtype == 'float' or df[col].dtype == 'int':
+                    df[col] = df[col].fillna(0)
+                elif col == 'vendorname':
+                    df[col] = df[col].fillna('Creative Mobile Technologies')
+                elif col == 'ratecode':
+                    df[col] = df[col].fillna('Standard rate')
+                elif col == 'payment_type':
+                    df[col] = df[col].fillna('Cash')
+                elif col == 'store_and_fwd_flag':
+                    df[col] = df[col].fillna('N')
             columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
             df.drop(columns=columns_to_drop, inplace=True)
-
+            yellow_dataframes_transformed.append(df)
 
 
 
@@ -113,9 +183,34 @@ class DataExtractor:
             # Add airport_fee column if not present
             if 'airport_fee' not in df.columns:
                 df['airport_fee'] = 0
+                df['airport_fee'].astype('float')
+            df['car_type'] = 'Green Cars'
+            df['vendorid'] = df['vendorid'].map(vendor)
+            df['ratecodeid'] = df['ratecodeid'].map(rate_code_type)
+            df['payment_type'] = df['payment_type'].map(payment_type)
+            df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
+            df['dropoff_datetime'] = pd.to_datetime(df['dropoff_datetime'])
+            df.rename(columns={'vendorid': 'vendorname', 'ratecodeid': 'ratecode'}, inplace=True)
+            df = pd.merge(df, Location_df, left_on='pulocationid', right_on='LocationID', how='left')
+            df['pickuplocation'] = df['Borough'] + ', ' + df['Zone'] + ', ' + df['service_zone']
+            df.drop(columns=['LocationID', 'Borough', 'Zone', 'service_zone'], inplace=True)
+            df = pd.merge(df, Location_df, left_on='dolocationid', right_on='LocationID', how='left')
+            df['dropofflocation'] = df['Borough'] + ', ' + df['Zone'] + ', ' + df['service_zone']
+            for col in df.columns:
+                if df[col].dtype == 'float' or df[col].dtype == 'int':
+                    df[col] = df[col].fillna(0)
+                elif col == 'vendorname':
+                    df[col] = df[col].fillna('Creative Mobile Technologies')
+                elif col == 'ratecode':
+                    df[col] = df[col].fillna('Standard rate')
+                elif col == 'payment_type':
+                    df[col] = df[col].fillna('Cash')
+                elif col == 'store_and_fwd_flag':
+                    df[col] = df[col].fillna('N')
             # Filter DataFrame columns
             columns_to_drop = [col for col in df.columns if col not in columns_to_include_lower]
             df.drop(columns=columns_to_drop, inplace=True)
+            green_dataframes_transformed.append(df)
 
         # Return processed DataFrames for green and yellow taxis
-        return green_dataframes, yellow_dataframes, required_year
+        return green_dataframes_transformed, yellow_dataframes_transformed, required_year

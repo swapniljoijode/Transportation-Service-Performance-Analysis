@@ -11,14 +11,14 @@ def create_table(df, year, month, connector):
     create_table_query = f"""
     CREATE TABLE {table_name} (
         tripid INT IDENTITY(1,1) PRIMARY KEY,
-        vendorid NVARCHAR(MAX),
+        vendor_name VARCHAR(MAX),
         trip_distance FLOAT,
         pickup_datetime DATETIME,
         dropoff_datetime DATETIME,
-        pulocationid INT,
-        dolocationid INT,
+        pickup_location NVARCHAR(100),
+        dropoff_location NVARCHAR(100),
         passenger_count FLOAT,
-        ratecodeid FLOAT,
+        rate_code NVARCHAR(50),
         store_and_fwd_flag NVARCHAR(2),
         payment_type NVARCHAR(50),
         fare_amount FLOAT,
@@ -29,7 +29,7 @@ def create_table(df, year, month, connector):
         total_amount FLOAT,
         congestion_surcharge FLOAT,
         airport_fee FLOAT,
-        car_type INT
+        car_type NVARCHAR(20)
     )
     """
 

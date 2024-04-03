@@ -4,11 +4,6 @@ import pandas as pd
 def insert_in_table(table_name, df, connector):
     # Function to insert data from a DataFrame into a database table
 
-    # Fill NaN values with 0 for columns of type float
-    for col in df.columns:
-        if df[col].dtypes == 'float':
-            df[col] = df[col].fillna(0)
-
     # Define batch size for batch insertion
     batch_size = 1000  # Adjust this value based on your dataset size and system resources
 
@@ -19,14 +14,14 @@ def insert_in_table(table_name, df, connector):
     for row in df.itertuples():
         # Append row values to the list
         rows_to_insert.append((
-            row.vendorid,
+            row.vendorname,
             row.trip_distance,
             row.pickup_datetime,
             row.dropoff_datetime,
-            row.pulocationid,
-            row.dolocationid,
+            row.pickuplocation,
+            row.dropofflocation,
             row.passenger_count,
-            row.ratecodeid,
+            row.ratecode,
             row.store_and_fwd_flag,
             row.payment_type,
             row.fare_amount,
@@ -45,7 +40,7 @@ def insert_in_table(table_name, df, connector):
             # Bulk insert the batch into the database
             connector.insert_data(table_name, f'''
                 INSERT INTO {table_name}
-                (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
+                (vendor_name, trip_distance, pickup_datetime, dropoff_datetime, pickup_location, dropoff_location, passenger_count, rate_code, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', rows_to_insert)
             connector.commit()
@@ -57,7 +52,7 @@ def insert_in_table(table_name, df, connector):
     if rows_to_insert:
         connector.insert_data(table_name, f'''
             INSERT INTO {table_name}
-            (vendorid, trip_distance, pickup_datetime, dropoff_datetime, pulocationid, dolocationid, passenger_count, ratecodeid, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', rows_to_insert)
+            (vendor_name, trip_distance, pickup_datetime, dropoff_datetime, pickup_location, dropoff_location, passenger_count, rate_code, store_and_fwd_flag, payment_type, fare_amount, mta_tax, improvement_surcharge, tip_amount, tolls_amount, total_amount, congestion_surcharge, airport_fee,car_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', rows_to_insert)
         connector.commit()

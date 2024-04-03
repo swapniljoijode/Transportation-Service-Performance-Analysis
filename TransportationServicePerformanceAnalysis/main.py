@@ -43,8 +43,6 @@ month_list = [df['pickup_datetime'].dt.month.iloc[0] for df in yellow_dataframes
 # Process the extracted data and insert into the database
 for month in month_list:
     for df in yellow_dataframes:
-        df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
-        df['car_type'] = 1
         # Extract month and year
         pickup_month = (df['pickup_datetime'].dt.month.iloc[0])
         pickup_year = (df['pickup_datetime'].dt.year.iloc[0])
@@ -75,10 +73,6 @@ for month in month_list:
 
     # Process green car data
     for df in green_dataframes:
-        df['pickup_datetime'] = pd.to_datetime(df['pickup_datetime'])
-        df['dropoff_datetime'] = pd.to_datetime(df['dropoff_datetime'])
-        # add new column to the dataframe for car type. 1: yellow cars. 2: green cars
-        df['car_type'] = 2
 
         # Extract month and year
         pickup_month = (df['pickup_datetime'].dt.month.iloc[0])

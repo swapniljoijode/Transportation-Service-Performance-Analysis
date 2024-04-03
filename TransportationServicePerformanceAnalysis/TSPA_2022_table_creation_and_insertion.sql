@@ -1,16 +1,16 @@
-USE [UberAnalytics]
+USE [TransportationServicePerformanceAnalysis]
 GO
 
 -- Check the data for the 1st month of 2022
 SELECT [tripid]
-      ,[vendorid]
+      ,[vendor_name]
       ,[trip_distance]
       ,[pickup_datetime]
       ,[dropoff_datetime]
-      ,[pulocationid]
-      ,[dolocationid]
+      ,[pickup_location]
+      ,[dropoff_location]
       ,[passenger_count]
-      ,[ratecodeid]
+      ,[rate_code]
       ,[store_and_fwd_flag]
       ,[payment_type]
       ,[fare_amount]
@@ -26,14 +26,14 @@ FROM [dbo].[trips_2022_1]
 ;
 
 --check if all the month's data can be combined together and viewed as a single table.
-SELECT [vendorid]
+SELECT [vendor_name]
       ,[trip_distance]
       ,[pickup_datetime]
       ,[dropoff_datetime]
-      ,[pulocationid]
-      ,[dolocationid]
+      ,[pickup_location]
+      ,[dropoff_location]
       ,[passenger_count]
-      ,[ratecodeid]
+      ,[rate_code]
       ,[store_and_fwd_flag]
       ,[payment_type]
       ,[fare_amount]
@@ -78,14 +78,14 @@ from (SELECT *
 --create a new table to store the combined data of all the months
 create table trip_data_2022 (
 	[tripid] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
-	[vendorid] [nvarchar](max) NULL,
+	[vendor_name] [nvarchar](max) NULL,
 	[trip_distance] [float] NULL,
 	[pickup_datetime] [datetime] NULL,
 	[dropoff_datetime] [datetime] NULL,
-	[pulocationid] [int] NULL,
-	[dolocationid] [int] NULL,
+	[pickup_location] [nvarchar](100) NULL,
+	[dropoff_location] [nvarchar](100) NULL,
 	[passenger_count] [float] NULL,
-	[ratecodeid] [float] NULL,
+	[rate_code] [nvarchar](50) NULL,
 	[store_and_fwd_flag] [nvarchar](2) NULL,
 	[payment_type] [nvarchar](50) NULL,
 	[fare_amount] [float] NULL,
@@ -96,19 +96,19 @@ create table trip_data_2022 (
 	[total_amount] [float] NULL,
 	[congestion_surcharge] [float] NULL,
 	[airport_fee] [float] NULL,
-	[car_type] [int] NULL
+	[car_type] [nvarchar](20) NULL
 );
 
 --insert data in the universal table from month tables.
 insert into trip_data_2022
-SELECT [vendorid]
+SELECT [vendor_name]
       ,[trip_distance]
       ,[pickup_datetime]
       ,[dropoff_datetime]
-      ,[pulocationid]
-      ,[dolocationid]
+      ,[pickup_location]
+      ,[dropoff_location]
       ,[passenger_count]
-      ,[ratecodeid]
+      ,[rate_code]
       ,[store_and_fwd_flag]
       ,[payment_type]
       ,[fare_amount]
@@ -149,3 +149,5 @@ from (SELECT *
 		) AS all_tables
 ) as merged_tables
 ;
+
+select * from dbo.trip_data_2022;
